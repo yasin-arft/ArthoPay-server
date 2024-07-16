@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
+var bcrypt = require('bcryptjs');
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.jzumutc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -29,6 +30,34 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    // collections
+    const userCollection = client.db('arthoPayDb').collection('users');
+
+    // user related apis
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+
+      // hash the pin
+      bcrypt.hash(user.pin, 8, async (err, hash) => {
+        if (hash) {
+          const hashedUser = {
+            ...user,
+            pin: hash,
+            status: 'Pending'
+          }
+
+          // add the user
+          const result = await userCollection.insertOne(hashedUser)
+          res.send(result);
+
+          console.log(hash);
+          console.log(hashedUser);
+        }
+      });
+    });
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
