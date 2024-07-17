@@ -34,6 +34,33 @@ async function run() {
     // collections
     const userCollection = client.db('arthoPayDb').collection('users');
 
+    // authentication related api
+    app.post('/login', async (req, res) => {
+      const credential = req.body;
+
+      const user = await userCollection.findOne({ email: credential.emailOrPhone }) ||
+        await userCollection.findOne({ phone: credential.emailOrPhone });
+
+      if (!user) {
+        return res.status(401).send({ message: 'unauthorized' });
+      }
+
+      if (user.status !== 'Approved') {
+        return res.send({ message: 'Your request is not approved yet.' });
+      }
+
+      bcrypt.compare(credential.pin, user.pin, function (err, response) {
+        if (err) {
+          return res.send({ message: 'Something went wrong! Please Try again.' });
+        } else if (response === false) {
+          return res.status(401).send({ message: 'unauthorized' });
+        } else {
+          res.send(user)
+        }
+      });
+    });
+
+
     // user related apis
     app.post('/users', async (req, res) => {
       const user = req.body;
@@ -50,9 +77,6 @@ async function run() {
           // add the user
           const result = await userCollection.insertOne(hashedUser)
           res.send(result);
-
-          console.log(hash);
-          console.log(hashedUser);
         }
       });
     });
